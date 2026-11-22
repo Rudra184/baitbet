@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>New campaign</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 640px; margin: 40px auto; color: #1a1a1a; }
+  label { display: block; margin: 12px 0 4px; font-size: 13px; font-weight: 600; }
+  input, textarea, select { width: 100%; padding: 8px; box-sizing: border-box; font-size: 14px; }
+  textarea { height: 70px; }
+  button { margin-top: 20px; padding: 10px 20px; background: #0b1f3a; color: #fff; border: none; border-radius: 3px; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>Draft a campaign</h1>
+  <form method="post" action="/campaigns">
+    <label>Name</label><input name="name" required>
+    <label>Scenario</label>
+    <select name="scenario">
+      <option value="network_reauth">Network/VPN re-authentication</option>
+    </select>
+    <label>Mailer profile</label><input name="mailer_profile" value="local-sink">
+
+    <h3>Email</h3>
+    <label>From name</label><input name="email_from_name" value="IT Helpdesk">
+    <label>Subject</label><input name="email_subject" value="Action needed: VPN session expired">
+    <label>Body</label><textarea name="email_body">Your VPN session expired. Re-authenticate to keep working.</textarea>
+    <label>Button label</label><input name="email_button_label" value="Re-authenticate">
+
+    <h3>Debrief</h3>
+    <label>Title</label><input name="debrief_title" value="Verify the request">
+    <label>Intro</label><textarea name="debrief_intro">This was a security awareness exercise.</textarea>
+    <label>Next steps (one per line)</label>
+    <textarea name="debrief_next_steps">Check unexpected requests through the portal or contact you already use.
+Report suspicious messages using your usual Outlook reporting process.</textarea>
+    <label>Closing note</label><input name="debrief_closing" value="Training preview. You can close this page.">
+
+    <button type="submit">Save draft</button>
+  </form>
+</body>
+</html>

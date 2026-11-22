@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Simulation service — campaigns</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 720px; margin: 40px auto; color: #1a1a1a; }
+  h1 { font-size: 20px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: 3px; background: #eef1f4; font-size: 12px; }
+  a.button { display: inline-block; padding: 8px 16px; background: #0b1f3a; color: #fff; text-decoration: none; border-radius: 3px; }
+</style>
+</head>
+<body>
+  <h1>Campaigns</h1>
+  <p><a class="button" href="/campaigns/new">New campaign</a></p>
+  <table>
+    <tr><th>Name</th><th>Scenario</th><th>Status</th><th>Content version</th></tr>
+    {{range .Campaigns}}
+    <tr>
+      <td><a href="/campaigns/{{.ID}}">{{.Name}}</a></td>
+      <td>{{.Scenario}}</td>
+      <td><span class="status">{{.Status}}</span></td>
+      <td><code>{{.ContentVersion}}</code></td>
+    </tr>
+    {{else}}
+    <tr><td colspan="4">No campaigns yet.</td></tr>
+    {{end}}
+  </table>
+</body>
+</html>

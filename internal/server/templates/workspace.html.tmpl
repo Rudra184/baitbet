@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{.C.Name}} — campaign workspace</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 760px; margin: 40px auto; color: #1a1a1a; }
+  .progress { display: flex; gap: 6px; margin: 16px 0; }
+  .step { flex: 1; text-align: center; padding: 6px 0; font-size: 12px; background: #eef1f4; border-radius: 3px; }
+  .step.done { background: #0b1f3a; color: #fff; }
+  .unresolved { background: #fff7ed; border: 1px solid #fde68a; padding: 10px 14px; font-size: 13px; margin: 16px 0; }
+  section { border: 1px solid #e5e7eb; padding: 16px; margin: 16px 0; border-radius: 4px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #eee; }
+  button, a.button { padding: 8px 16px; background: #0b1f3a; color: #fff; border: none; border-radius: 3px; font-size: 14px; text-decoration: none; display: inline-block; }
+  input, textarea { width: 100%; padding: 6px; box-sizing: border-box; font-size: 13px; }
+  iframe { width: 100%; height: 320px; border: 1px solid #ddd; }
+  .cols { display: flex; gap: 12px; }
+  .cols > div { flex: 1; }
+</style>
+</head>
+<body>
+  <h1>{{.C.Name}}</h1>
+  <p>Status: <b>{{.C.Status}}</b> &middot; Content version: <code>{{.C.ContentVersion}}</code>{{if .C.ApprovedContentVersion}} &middot; Approved version: <code>{{.C.ApprovedContentVersion}}</code>{{end}}</p>
+
+  <div class="progress">
+    {{range $s := (slice "draft" "tested" "approved" "released" "closed")}}
+      <div class="step{{if statusAtOrPast $.C.Status $s}} done{{end}}">{{$s}}</div>
+    {{end}}
+  </div>
+
+  {{if .Unresolved}}
+  <div class="unresolved">
+    <b>Unresolved:</b>
+    <ul>{{range .Unresolved}}<li>{{.}}</li>{{end}}</ul>
+  </div>
+  {{end}}
+
+  <section>
+    <h2>Preview — same saved content version used for delivery</h2>
+    <div class="cols">
+      <div><p>Email</p><iframe src="/campaigns/{{.C.ID}}/preview/email"></iframe></div>
+      <div><p>Debrief (desktop)</p><iframe src="/campaigns/{{.C.ID}}/preview/debrief" style="width:1280px;transform:scale(0.28);transform-origin:top left;height:900px;"></iframe></div>
+    </div>
+  </section>
+
+  {{if eq .C.Status "draft"}}
+  <section>
+    <h2>Draft — edit content</h2>
+    <form method="post" action="/campaigns/{{.C.ID}}/draft">
+      <label>Name</label><input name="name" value="{{.C.Name}}">
+      <label>Scenario</label><input name="scenario" value="{{.C.Scenario}}">
+      <label>Mailer profile</label><input name="mailer_profile" value="{{.C.MailerProfile}}">
+      <label>Email subject</label><input name="email_subject" value="{{.C.EmailSubject}}">
+      <label>Email body</label><textarea name="email_body">{{.C.EmailBodyHTML}}</textarea>
+      <label>Email button label</label><input name="email_button_label" value="{{.C.EmailButtonLabel}}">
+      <label>Email from name</label><input name="email_from_name" value="{{.C.EmailFromName}}">
+      <label>Debrief title</label><input name="debrief_title" value="{{.C.DebriefTitle}}">
+      <label>Debrief intro</label><textarea name="debrief_intro">{{.C.DebriefIntro}}</textarea>
+      <label>Debrief next steps</label><textarea name="debrief_next_steps">{{.C.DebriefNextSteps}}</textarea>
+      <label>Debrief closing</label><input name="debrief_closing" value="{{.C.DebriefClosing}}">
+      <button type="submit">Save draft (new content version)</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Test — send to named test mailboxes</h2>
+    <form method="post" action="/campaigns/{{.C.ID}}/test-send">
+      <label>Test recipients (space or comma separated)</label>
+      <input name="test_recipients" placeholder="qa1@example.test qa2@example.test">
+      <button type="submit">Send test</button>
+    </form>
+  </section>
+  {{end}}
+
+  {{if eq .C.Status "tested"}}
+  <section>
+    <h2>Approve — review content, sender, named recipients and expiry</h2>
+    <p>Mailer profile: <b>{{.C.MailerProfile}}</b> &middot; Content version to approve: <code>{{.C.ContentVersion}}</code></p>
+    <form method="post" action="/campaigns/{{.C.ID}}/approve">
+      <button type="submit">Approve this exact revision</button>
+    </form>
+  </section>
+  {{end}}
+
+  {{if eq .C.Status "approved"}}
+  <section>
+    <h2>Release — named wave</h2>
+    <form method="post" action="/campaigns/{{.C.ID}}/release">
+      <label>Recipients (space or comma separated)</label>
+      <input name="recipients" placeholder="alice@example.test bob@example.test">
+      <button type="submit">Release now</button>
+    </form>
+  </section>
+  {{end}}
+
+  {{if eq .C.Status "released"}}
+  <section>
+    <h2>Close and report</h2>
+    <p><a class="button" href="/campaigns/{{.C.ID}}/report.csv">Download report (CSV)</a></p>
+    <form method="post" action="/campaigns/{{.C.ID}}/close">
+      <button type="submit">Close campaign</button>
+    </form>
+  </section>
+  {{end}}
+
+  <section>
+    <h2>Evidence</h2>
+    <table>
+      <tr><th>Event</th><th>Count</th></tr>
+      {{range .Counts}}<tr><td>{{.EventType}}</td><td>{{.Count}}</td></tr>{{else}}<tr><td colspan="2">No events yet.</td></tr>{{end}}
+    </table>
+  </section>
+
+  <section>
+    <h2>Recipients</h2>
+    <table>
+      <tr><th>Email</th><th>Test?</th><th>Sent</th><th>Error</th><th>Tracking link</th></tr>
+      {{range .Recipients}}
+      <tr>
+        <td>{{.Email}}</td>
+        <td>{{if .IsTest}}yes{{else}}no{{end}}</td>
+        <td>{{if .SentAt}}{{.SentAt.Format "15:04:05"}}{{else}}—{{end}}</td>
+        <td>{{if .SendError}}{{.SendError}}{{else}}—{{end}}</td>
+        <td><code>/t/{{.Token}}</code></td>
+      </tr>
+      {{else}}<tr><td colspan="5">No recipients yet.</td></tr>{{end}}
+    </table>
+  </section>
+
+  <p><a href="/">&larr; All campaigns</a></p>
+</body>
+</html>

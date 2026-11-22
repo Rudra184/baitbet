@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{.Title}}</title>
+<style>
+  body { margin: 0; font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #eef1f4; }
+  .card { max-width: 640px; margin: 40px auto; background: #ffffff; border: 1px solid #d7dde3; }
+  .band { background: #0b1f3a; color: #ffffff; padding: 12px 24px; font-size: 14px; letter-spacing: .02em; }
+  .body { padding: 24px; color: #1a1a1a; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  .intro { color: #4a5563; margin: 0 0 20px; }
+  .steps { background: #0b1f3a; color: #ffffff; padding: 16px 20px; }
+  .steps h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+  .steps ol { margin: 0; padding-left: 18px; }
+  .closing { padding: 16px 24px; color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb; }
+  img.logo { height: 28px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="band">Security awareness exercise</div>
+    <div class="body">
+      {{if .LogoDataURI}}<img class="logo" src="{{.LogoDataURI}}" alt="">{{end}}
+      <h1>{{.Title}}</h1>
+      <p class="intro">{{.Intro}}</p>
+    </div>
+    {{if .NextSteps}}
+    <div class="steps">
+      <h2>What to do next time</h2>
+      <ol>
+        {{range .NextSteps}}<li>{{.}}</li>{{end}}
+      </ol>
+    </div>
+    {{end}}
+    <div class="closing">{{.ClosingNote}}</div>
+  </div>
+</body>
+</html>

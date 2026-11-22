@@ -1,0 +1,56 @@
+# Local dev stack for baitbet: its own Postgres and a local SMTP sink
+# (Mailpit) - never a real relay. Entirely separate from whatever core
+# platform repo enables this module per-org; nothing here talks to that
+# repo's database or containers.
+#
+# Usage: docker compose up -d
+name: baitbet
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: baitbet-db
+    environment:
+      POSTGRES_DB: simulation_service
+      POSTGRES_USER: sim_user
+      POSTGRES_PASSWORD: ${SIM_DB_PASSWORD:-changeme_in_production}
+    ports:
+      - "5434:5432"
+    volumes:
+      - baitbet_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sim_user -d simulation_service"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Local SMTP sink: accepts any mail on 1025, never relays it anywhere.
+  # Web UI at :8025 to see what the service actually sent.
+  mailsink:
+    image: axllent/mailpit:latest
+    container_name: baitbet-mailsink
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  service:
+    build:
+      context: .
+    container_name: baitbet-service
+    depends_on:
+      db:
+        condition: service_healthy
+      mailsink:
+        condition: service_started
+    environment:
+      SIM_DB_URL: postgres://sim_user:${SIM_DB_PASSWORD:-changeme_in_production}@db:5432/simulation_service?sslmode=disable
+      SIM_SMTP_HOST: mailsink:1025
+      SIM_SMTP_NO_AUTH: "true"
+      SIM_MAIL_FROM: it-helpdesk@sim.local
+      SIM_PUBLIC_BASE: http://127.0.0.1:8766
+      SIM_LISTEN_ADDR: 0.0.0.0:8766
+    ports:
+      - "127.0.0.1:8766:8766"
+
+volumes:
+  baitbet_postgres_data:

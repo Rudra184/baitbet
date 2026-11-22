@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # ghcr.io/<owner>/baitbet, lowercase - OCI repository names must be
+  # lowercase, but github.repository_owner preserves the account's actual
+  # casing (Rudra184), so that expression can't be used here directly.
+  IMAGE: ghcr.io/rudra184/baitbet
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # 1. TEST — offline unit tests + integration tests against a real
+  #    throwaway Postgres (the same two-tier split USAGE.md documents
+  #    for local dev: go test vs go test -tags=integration).
+  # ─────────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sim_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sim_user"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt check
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt needs to be run on:"; echo "$out"; exit 1
+          fi
+
+      - name: go vet
+        run: go vet -tags=integration ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: Unit tests (offline)
+        run: go test ./...
+
+      - name: Integration tests (real Postgres)
+        env:
+          SIM_TEST_DB_ADMIN_URL: postgres://sim_user:ci_password@127.0.0.1:5432/postgres?sslmode=disable
+        run: go test -tags=integration ./...
+
+  # ─────────────────────────────────────────────────────────────
+  # 2. BUILD & PUSH — only on main, and only once tests pass. This is
+  #    the step that lets any embedding host application bump one
+  #    image tag to pick up a baitbet change, without touching its
+  #    own code (see PLAN.md §2).
+  # ─────────────────────────────────────────────────────────────
+  build-and-push:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
