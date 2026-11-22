@@ -95,5 +95,4 @@ internal/server/   HTTP handlers and the server-rendered admin UI
 
 ## License
 
-Not yet decided — don't treat this as licensed for reuse until a LICENSE
-file is added.
+MIT — see [LICENSE](LICENSE).
