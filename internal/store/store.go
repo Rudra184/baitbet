@@ -1,7 +1,8 @@
 // Package store is the service's only database access point. Nothing
 // outside this package touches SQL directly, and no host application
 // embedding this service touches this database at all - separate
-// credentials, separate instance, separate migrations (PLAN.md §2.4).
+// credentials, separate instance, separate migrations (see
+// ARCHITECTURE.md).
 package store
 
 import (
@@ -39,9 +40,8 @@ func (s *Store) Close() { s.pool.Close() }
 func (s *Store) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
 // Migrate applies every embedded .sql file once, in filename order. There's
-// no down-migration support in this slice - additive-only schema changes,
-// matching AGENTS.md's "keep drop_table for removed models" posture; nothing
-// here has needed one yet.
+// no down-migration support - schema changes are additive only; nothing
+// here has needed a rollback yet.
 func (s *Store) Migrate(ctx context.Context) error {
 	entries, err := fs.ReadDir(migrationsFS, "migrations")
 	if err != nil {
@@ -176,8 +176,8 @@ func (s *Store) ListCampaigns(ctx context.Context, orgID string) ([]Campaign, er
 
 // UpdateDraftContent overwrites a draft campaign's content fields and bumps
 // its content_version. Only callable while status = 'draft': editing
-// released content without a new version is exactly what the Quality plan
-// forbids ("Changes require a new approval").
+// released content without a new version would let a change slip out
+// without a fresh approval.
 func (s *Store) UpdateDraftContent(ctx context.Context, id string, c Campaign, newVersion string) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE campaigns SET name=$2, scenario=$3, content_version=$4,

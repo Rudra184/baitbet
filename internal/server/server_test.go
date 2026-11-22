@@ -340,8 +340,7 @@ func TestTrack_UnknownTokenIsNeutral(t *testing.T) {
 }
 
 // Disabling the org must make an already-released recipient's old link go
-// neutral and record no new event - PLAN.md §2.2's disable behavior,
-// exercised against a real released campaign rather than asserted in prose.
+// neutral and record no new event.
 func TestTrack_DisabledOrgIsNeutralAndRecordsNoNewEvent(t *testing.T) {
 	ts, st := newTestServer(t)
 	ctx := t.Context()

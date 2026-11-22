@@ -1,8 +1,6 @@
-// Command server runs the standalone simulation service's operator
-// workspace and public tracking endpoints against a real Postgres database
-// and a real (local, by default) SMTP sink. This is the "see it in action
-// locally" binary - milestones A-C of PLAN.md's backlog, run as one process
-// against docker-compose.go-sim.yml.
+// Command server runs the simulation service's operator workspace and
+// public tracking endpoints against a real Postgres database and a real
+// (local, by default) SMTP sink.
 package main
 
 import (
@@ -53,10 +51,10 @@ func main() {
 	publicBase := env("SIM_PUBLIC_BASE", "http://127.0.0.1:8766")
 	addr := env("SIM_LISTEN_ADDR", "127.0.0.1:8766")
 
-	// Empty SIM_HANDOFF_SECRET = standalone/local-demo mode: every request
-	// is treated as orgID, no token required. Set it to require every admin
-	// request to carry a valid signed handoff token minted by whatever
-	// platform is embedding this service (see internal/authn and PLAN.md §2).
+	// Empty SIM_HANDOFF_SECRET = standalone mode: every request is treated
+	// as orgID, no token required. Set it to require every admin request to
+	// carry a valid signed handoff token minted by whatever host application
+	// is embedding this service (see internal/authn and ARCHITECTURE.md).
 	handoffSecret := os.Getenv("SIM_HANDOFF_SECRET")
 
 	srv := server.New(st, mp, publicBase, handoffSecret, orgID)

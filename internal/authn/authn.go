@@ -1,9 +1,9 @@
 // Package authn verifies the short-lived signed handoff token a host
-// application mints after its own session auth and entitlement checks have
-// already passed (PLAN.md §2). It does not replace those checks and does
-// not implement a login flow of its own - it only answers "did the host
-// actually vouch for this request, for this org, and is that vouch still
-// fresh."
+// application mints after its own session auth and entitlement checks
+// have already passed (see ARCHITECTURE.md). It does not replace those
+// checks and does not implement a login flow of its own - it only answers
+// "did the host actually vouch for this request, for this org, and is
+// that vouch still fresh."
 package authn
 
 import (
@@ -71,9 +71,9 @@ func FromHeader(r *http.Request, secret string) (*Claims, error) {
 	return Verify(strings.TrimPrefix(h, prefix), secret)
 }
 
-// Mint is used only by local tooling/tests standing in for the platform
-// (which is the real token issuer in production - see PLAN.md §2). It is
-// not called anywhere in the service's own request path.
+// Mint is used only by local tooling/tests standing in for a host
+// application, which is the real token issuer in production. It is not
+// called anywhere in the service's own request path.
 func Mint(secret, orgID, userID, role string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := Claims{

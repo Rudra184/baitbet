@@ -32,9 +32,9 @@ type Server struct {
 	PublicBase  string // e.g. http://127.0.0.1:8765 - used to build tracking links
 
 	// HandoffSecret, when set, requires every admin route to carry a valid
-	// signed handoff token (internal/authn) minted by the core platform
-	// after ITS OWN auth/entitlement checks already passed (PLAN.md §2).
-	// When empty, the service runs in standalone/local-demo mode: every
+	// signed handoff token (internal/authn) minted by a host application
+	// after its own auth/entitlement checks already passed (see
+	// ARCHITECTURE.md). When empty, the service runs standalone: every
 	// admin request is treated as belonging to DefaultOrgID, no token
 	// required. The two modes share every other code path - standalone
 	// mode is not a separate, less-tested branch.
@@ -466,7 +466,7 @@ func (s *Server) handleReportCSV(w http.ResponseWriter, r *http.Request) {
 // handleTrack is the only unauthenticated, public endpoint. It resolves a
 // token, checks the owning org and campaign are still active, records an
 // event, and serves the form-free debrief - or a neutral closed response
-// that reveals nothing and records nothing, per PLAN.md §2.2.
+// that reveals nothing and records nothing.
 func (s *Server) handleTrack(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	rec, err := s.Store.GetRecipientByToken(r.Context(), token)

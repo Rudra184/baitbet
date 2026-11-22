@@ -65,7 +65,7 @@ jobs:
   # 2. BUILD & PUSH — only on main, and only once tests pass. This is
   #    the step that lets any embedding host application bump one
   #    image tag to pick up a baitbet change, without touching its
-  #    own code (see PLAN.md §2).
+  #    own code (see ARCHITECTURE.md).
   # ─────────────────────────────────────────────────────────────
   build-and-push:
     needs: test

@@ -1,7 +1,6 @@
-// Package mailer sends through an "approved mailer profile" - in this slice,
-// one local SMTP sink. Stdlib net/smtp is enough for that; evaluating
-// wneessen/go-mail for real TLS/timeout handling against an actual relay
-// is still open, per PLAN.md §3's "Dependency choices to validate".
+// Package mailer sends through an approved mailer profile. Stdlib net/smtp
+// is enough for a local sink; a real relay with TLS/auth may eventually
+// want a proper mail library instead.
 package mailer
 
 import (
@@ -23,9 +22,8 @@ type Profile struct {
 
 // Send returns a plain error on any SMTP-level rejection: callers record this
 // as "send failed", distinct from "accepted" (no error) and distinct again
-// from "verified delivered" (an outcome this slice cannot observe - that
-// needs real mailbox evidence, per the Quality plan's "Separate SMTP
-// acceptance from verified delivery").
+// from "verified delivered", which this package has no way to observe -
+// that needs real mailbox evidence from the recipient side.
 func Send(p Profile, to, subject, htmlBody string) error {
 	msg := buildMessage(p.From, to, subject, htmlBody)
 

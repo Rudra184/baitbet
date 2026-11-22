@@ -1,17 +1,17 @@
 # Using baitbet
 
 A walkthrough of the actual operator workflow, screen by screen. For
-architecture/status/what's missing, see `PLAN.md`; for the one-line
-quickstart, see `README.md`.
+architecture and integration details, see `ARCHITECTURE.md`; for the
+one-line quickstart, see `README.md`.
 
-**Before you start**: this walkthrough runs in standalone/local-demo mode -
-`SIM_HANDOFF_SECRET` unset, every request treated as one local org, no token
-required. That's intentional for running baitbet on its own. The moment it's
-embedded behind another platform, `SIM_HANDOFF_SECRET` must be set, and every
-admin request then needs a signed token minted by that platform (see
-`internal/authn` and `PLAN.md` §9) - don't run with it unset anywhere but
-`127.0.0.1`. Everything here assumes you're running it locally per the
-README's quickstart.
+**Before you start**: this walkthrough runs standalone - `SIM_HANDOFF_SECRET`
+unset, every request treated as one local org, no token required. That's
+intentional for running baitbet on its own. The moment it's embedded behind
+a host application, `SIM_HANDOFF_SECRET` must be set, and every admin
+request then needs a signed token minted by that host (see `internal/authn`
+and `ARCHITECTURE.md`) - don't run with it unset anywhere but `127.0.0.1`.
+Everything here assumes you're running it locally per the README's
+quickstart.
 
 ## 1. Start the stack
 
@@ -33,8 +33,9 @@ SIM_LISTEN_ADDR='127.0.0.1:8766' go run ./cmd/server
 
 On first run this creates its schema automatically (`internal/store/
 migrations/0001_init.sql`) and seeds one organization, `org_local_demo`
-(every campaign in this run belongs to it — there's no multi-org switch
-in the UI yet, see PLAN.md).
+(every campaign in this run belongs to it — there's no multi-org switch in
+the UI; multi-org only exists via the handoff-token mode described in
+`ARCHITECTURE.md`).
 
 Open `http://127.0.0.1:8766/`.
 
@@ -46,10 +47,9 @@ Click **New campaign**. Fill in:
 - **Scenario** — currently one option, `network_reauth` ("VPN session
   expired"). More scenarios are a content-authoring task, not a code
   change — see `internal/content/pack.go`.
-- **Mailer profile** — a label only in this slice (it's recorded on the
-  campaign but every send in local mode goes to whatever `SIM_SMTP_HOST`
-  the server process was started with). Real profile *selection* — picking
-  between several configured relays — is a Milestone B/D item, not built.
+- **Mailer profile** — just a label for now. It's recorded on the campaign,
+  but every send goes to whatever `SIM_SMTP_HOST` the server was started
+  with. Picking between multiple configured relays isn't built yet.
 - **Email fields** (from name, subject, body, button label) and **debrief
   fields** (title, intro, next steps — one per line, closing note) — this
   is the actual content a recipient will see. There's no rich-text editor;
@@ -88,8 +88,7 @@ Enter one or more email addresses (space- or comma-separated) under **Test
 - **locks the draft form** — you can't edit content once it's left draft;
   if you need to change something, there's currently no "back to draft"
   button in the UI (the store would allow it, the handler for it isn't
-  wired — see PLAN.md's open items). For now: finish the content before
-  you test-send.
+  wired up yet). For now: finish the content before you test-send.
 
 If the mailer is unreachable, the send still "succeeds" at the workflow
 level (status still moves to `tested`) but the recipient row records the
@@ -122,10 +121,9 @@ Enter the real recipient list and click **Release now**. This:
 Each person on the list gets an email with a button. Clicking it hits
 `/t/{token}` — a real, working link — which records a `debrief_viewed`
 event and serves the debrief page (the "you've been tested" explanation
-page). There's no credential-capture step in this slice; it's a pure
-awareness/training flow, not a credential-harvesting simulation (clone/
-harvest, if you need that, is the separate legacy module this project is
-meant to eventually replace — see PLAN.md §1).
+page). There's no credential-capture step here; it's a pure
+awareness/training flow, not a credential-harvesting simulation — baitbet
+never clones a real login page.
 
 ### Close and report (status = released)
 
@@ -152,8 +150,7 @@ docker exec baitbet-db psql -U sim_user -d simulation_service \
 
 With the org disabled: releasing a new campaign is blocked (`403`), and any
 existing recipient's tracking link returns a neutral "This page is no
-longer active" response and **records no new event** — confirmed by the
-test suite (`internal/server/server_test.go`). Flip `enabled` back to
+longer active" response and records no new event. Flip `enabled` back to
 `true` to re-enable.
 
 ## 5. Troubleshooting

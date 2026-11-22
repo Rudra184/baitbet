@@ -1,6 +1,5 @@
 // Package render turns a content.Pack into self-contained HTML: the
-// recipient email and the debrief landing page. It is the offline-renderer
-// slice of the standalone-service plan.
+// recipient email and the debrief landing page.
 //
 // Three properties are load-bearing and covered by render_test.go:
 //   - deterministic: the same Pack always produces byte-identical HTML, so
@@ -131,9 +130,9 @@ func EmailDelivery(pack content.Pack, trackingURL string) (string, error) {
 }
 
 // localAssetDataURI resolves a pack's asset key to an embedded file and
-// returns it as a data: URI. The only key implemented in this slice is
-// "mark" (internal/render/assets/mark.svg); any other key is rejected
-// rather than silently falling back to a network fetch.
+// returns it as a data: URI. The only key currently implemented is "mark"
+// (internal/render/assets/mark.svg); any other key is rejected rather than
+// silently falling back to a network fetch.
 func localAssetDataURI(key string) (string, error) {
 	switch key {
 	case "mark":
