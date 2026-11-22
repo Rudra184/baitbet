@@ -30,6 +30,41 @@ This describes how any host app — not a specific one — can gate access to
 baitbet per its own users and organizations, without baitbet needing to
 know anything about that host's authentication system.
 
+### Two ways to consume it
+
+- **Embed the HTML workspace.** Every route under `/` and `/campaigns/...`
+  renders a full page meant to be viewed directly (optionally inside an
+  iframe behind the host's own auth). Zero integration work beyond the
+  handoff token.
+- **Build your own UI against the JSON API** under `/api/campaigns/...`
+  (same routes, `Accept: application/json` in spirit — see below). Every
+  JSON handler is a thin encoding of the exact same `internal/store` calls
+  the HTML handlers use, so the two can never drift in workflow behavior.
+  The JSON API is intentionally a plain mirror of baitbet's own data model
+  — list/get/create/update-draft/test-send/approve/release/close, plus
+  recipients and event counts — with no aggregation, renaming, or
+  shaping for any particular consumer's UI. That belongs in the host
+  application, which is free to combine these primitives however its own
+  product needs.
+
+| Method & path | What it does |
+|---|---|
+| `GET /api/campaigns` | List campaigns for the caller's org |
+| `POST /api/campaigns` | Create a draft |
+| `GET /api/campaigns/{id}` | Fetch one campaign |
+| `PUT /api/campaigns/{id}/draft` | Replace a draft's content (draft only) |
+| `GET /api/campaigns/{id}/recipients` | List recipients + send status |
+| `GET /api/campaigns/{id}/events` | Event counts (e.g. `debrief_viewed`) |
+| `POST /api/campaigns/{id}/test-send` | `{"recipients": ["a@b.com"]}` → status `tested` |
+| `POST /api/campaigns/{id}/approve` | `tested` → `approved` |
+| `POST /api/campaigns/{id}/release` | `{"recipients": [...]}`, `approved` → `released` |
+| `POST /api/campaigns/{id}/close` | `released` → `closed` |
+| `GET /campaigns/{id}/report.csv` | CSV report (not under `/api` — already a generic format) |
+
+All of these require the handoff token in integrated mode, same as the
+HTML routes, and return `{"error": "..."}` with the matching status code
+(400/404/409/500) on failure.
+
 ### Handoff tokens
 
 The host does its own login/permission check first. Once a user is allowed

@@ -69,9 +69,9 @@ func (s *Store) Migrate(ctx context.Context) error {
 // --- Organizations ---
 
 type Organization struct {
-	ID      string
-	Name    string
-	Enabled bool
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
 }
 
 func (s *Store) UpsertOrganization(ctx context.Context, id, name string, enabled bool) error {
@@ -96,28 +96,37 @@ func (s *Store) GetOrganization(ctx context.Context, id string) (Organization, e
 // --- Campaigns ---
 
 type Campaign struct {
-	ID                     string
-	OrganizationID         string
-	Name                   string
-	Scenario               string
-	ContentVersion         string
-	EmailSubject           string
-	EmailBodyHTML          string
-	EmailButtonLabel       string
-	EmailFromName          string
-	DebriefTitle           string
-	DebriefIntro           string
-	DebriefNextSteps       string // newline-separated
-	DebriefClosing         string
-	MailerProfile          string
-	Status                 string
-	ApprovedContentVersion *string
-	ApprovedAt             *time.Time
-	ReleasedAt             *time.Time
-	ClosedAt               *time.Time
-	ExpiresAt              *time.Time
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	ID                     string     `json:"id"`
+	OrganizationID         string     `json:"organization_id"`
+	Name                   string     `json:"name"`
+	Scenario               string     `json:"scenario"`
+	ContentVersion         string     `json:"content_version"`
+	EmailSubject           string     `json:"email_subject"`
+	EmailBodyHTML          string     `json:"email_body_html"`
+	EmailButtonLabel       string     `json:"email_button_label"`
+	EmailFromName          string     `json:"email_from_name"`
+	DebriefTitle           string     `json:"debrief_title"`
+	DebriefIntro           string     `json:"debrief_intro"`
+	DebriefNextSteps       string     `json:"debrief_next_steps"` // newline-separated
+	DebriefClosing         string     `json:"debrief_closing"`
+	MailerProfile          string     `json:"mailer_profile"`
+	Status                 string     `json:"status"`
+	ApprovedContentVersion *string    `json:"approved_content_version,omitempty"`
+	ApprovedAt             *time.Time `json:"approved_at,omitempty"`
+	ReleasedAt             *time.Time `json:"released_at,omitempty"`
+	ClosedAt               *time.Time `json:"closed_at,omitempty"`
+	ExpiresAt              *time.Time `json:"expires_at,omitempty"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
+}
+
+// CampaignSummary is a Campaign plus the counts the list view needs,
+// computed in one query rather than one round trip per campaign.
+type CampaignSummary struct {
+	Campaign
+	RecipientCount int `json:"recipient_count"`
+	SentCount      int `json:"sent_count"`
+	ClickedCount   int `json:"clicked_count"`
 }
 
 const campaignColumns = `id, organization_id, name, scenario, content_version,
@@ -254,13 +263,13 @@ func (s *Store) CloseCampaign(ctx context.Context, id string) error {
 // --- Recipients & events ---
 
 type Recipient struct {
-	ID         string
-	CampaignID string
-	Email      string
-	IsTest     bool
-	Token      string
-	SentAt     *time.Time
-	SendError  *string
+	ID         string     `json:"id"`
+	CampaignID string     `json:"campaign_id"`
+	Email      string     `json:"email"`
+	IsTest     bool       `json:"is_test"`
+	Token      string     `json:"token"`
+	SentAt     *time.Time `json:"sent_at,omitempty"`
+	SendError  *string    `json:"send_error,omitempty"`
 }
 
 func (s *Store) AddRecipient(ctx context.Context, r Recipient) error {
@@ -310,8 +319,8 @@ func (s *Store) RecordEvent(ctx context.Context, recipientID, eventType, metadat
 }
 
 type EventCount struct {
-	EventType string
-	Count     int
+	EventType string `json:"event_type"`
+	Count     int    `json:"count"`
 }
 
 func (s *Store) EventCountsForCampaign(ctx context.Context, campaignID string) ([]EventCount, error) {

@@ -130,6 +130,8 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
+	s.apiRoutes(mux)
+
 	return mux
 }
 
@@ -325,6 +327,32 @@ func (s *Server) handlePreviewDebrief(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(out))
 }
 
+// sendTo renders and sends one delivery email, records the recipient and
+// the send outcome, and - for a real (non-test) send only - the
+// "mail_accepted" event. Shared between the HTML and JSON handlers for
+// test-send and release so the two encodings can never drift in behavior.
+func (s *Server) sendTo(r *http.Request, campaignID, addr string, pack content.Pack, isTest bool) error {
+	rec := store.Recipient{ID: newID("rec"), CampaignID: campaignID, Email: addr, IsTest: isTest, Token: newToken()}
+	if err := s.Store.AddRecipient(r.Context(), rec); err != nil {
+		return err
+	}
+	link := fmt.Sprintf("%s/t/%s", s.PublicBase, rec.Token)
+	html, err := render.EmailDelivery(pack, link)
+	if err != nil {
+		return err
+	}
+	sendErr := mailer.Send(s.MailProfile, addr, pack.Email.Subject, html)
+	_ = s.Store.MarkSent(r.Context(), rec.ID, sendErr)
+	if sendErr != nil {
+		log.Printf("send to %s failed: %v", addr, sendErr)
+	} else if !isTest {
+		_ = s.Store.RecordEvent(r.Context(), rec.ID, "mail_accepted", "")
+	}
+	return nil
+}
+
+func releaseExpiry() time.Time { return time.Now().Add(14 * 24 * time.Hour) }
+
 // handleTestSend sends to named test mailboxes only (never real recipients)
 // and leaves the campaign in status "tested" - the gate Approve requires.
 func (s *Server) handleTestSend(w http.ResponseWriter, r *http.Request) {
@@ -344,19 +372,8 @@ func (s *Server) handleTestSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, addr := range addrs {
-		rec := store.Recipient{ID: newID("rec"), CampaignID: id, Email: addr, IsTest: true, Token: newToken()}
-		if err := s.Store.AddRecipient(r.Context(), rec); s.fail(w, err) {
+		if err := s.sendTo(r, id, addr, pack, true); s.fail(w, err) {
 			return
-		}
-		link := fmt.Sprintf("%s/t/%s", s.PublicBase, rec.Token)
-		html, err := render.EmailDelivery(pack, link)
-		if s.fail(w, err) {
-			return
-		}
-		sendErr := mailer.Send(s.MailProfile, addr, pack.Email.Subject, html)
-		_ = s.Store.MarkSent(r.Context(), rec.ID, sendErr)
-		if sendErr != nil {
-			log.Printf("test-send to %s failed: %v", addr, sendErr)
 		}
 	}
 	if err := s.Store.SetStatus(r.Context(), id, "tested"); s.fail(w, err) {
@@ -397,29 +414,15 @@ func (s *Server) handleRelease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expires := time.Now().Add(14 * 24 * time.Hour)
-	if err := s.Store.Release(r.Context(), id, expires); s.failConflict(w, err) {
+	if err := s.Store.Release(r.Context(), id, releaseExpiry()); s.failConflict(w, err) {
 		return
 	}
 
 	pack := packFromCampaign(c)
 	addrs := strings.Fields(strings.ReplaceAll(r.FormValue("recipients"), ",", " "))
 	for _, addr := range addrs {
-		rec := store.Recipient{ID: newID("rec"), CampaignID: id, Email: addr, IsTest: false, Token: newToken()}
-		if err := s.Store.AddRecipient(r.Context(), rec); s.fail(w, err) {
+		if err := s.sendTo(r, id, addr, pack, false); s.fail(w, err) {
 			return
-		}
-		link := fmt.Sprintf("%s/t/%s", s.PublicBase, rec.Token)
-		html, err := render.EmailDelivery(pack, link)
-		if s.fail(w, err) {
-			return
-		}
-		sendErr := mailer.Send(s.MailProfile, addr, pack.Email.Subject, html)
-		_ = s.Store.MarkSent(r.Context(), rec.ID, sendErr)
-		if sendErr == nil {
-			_ = s.Store.RecordEvent(r.Context(), rec.ID, "mail_accepted", "")
-		} else {
-			log.Printf("release send to %s failed: %v", addr, sendErr)
 		}
 	}
 	http.Redirect(w, r, "/campaigns/"+id, http.StatusSeeOther)
