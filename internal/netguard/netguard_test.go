@@ -42,15 +42,15 @@ func TestValidateURL_RejectsLocalhost(t *testing.T) {
 
 func TestValidateURL_RejectsIPLiteralsByClass(t *testing.T) {
 	cases := []string{
-		"http://127.0.0.1/",       // loopback
-		"http://10.0.0.5/",        // private
-		"http://192.168.1.1/",     // private
-		"http://172.16.0.1/",      // private
-		"http://169.254.169.254/", // link-local / cloud metadata
-		"http://100.64.0.1/",      // CGNAT
-		"http://0.0.0.0/",         // unspecified
-		"http://[::1]/",           // IPv6 loopback
-		"http://[fe80::1]/",       // IPv6 link-local
+		"http://127.0.0.1/",          // loopback
+		"http://10.0.0.5/",           // private
+		"http://192.168.1.1/",        // private
+		"http://172.16.0.1/",         // private
+		"http://169.254.169.254/",    // link-local / cloud metadata
+		"http://100.64.0.1/",         // CGNAT
+		"http://0.0.0.0/",            // unspecified
+		"http://[::1]/",              // IPv6 loopback
+		"http://[fe80::1]/",          // IPv6 link-local
 		"http://[::ffff:127.0.0.1]/", // IPv4-mapped loopback
 	}
 	for _, u := range cases {

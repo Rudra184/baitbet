@@ -13,8 +13,18 @@ import (
 
 	"github.com/rudra184/baitbet/internal/authn"
 	"github.com/rudra184/baitbet/internal/mailer"
+	"github.com/rudra184/baitbet/internal/secrets"
 	"github.com/rudra184/baitbet/internal/store"
 )
+
+func testSecretsBox(t *testing.T) *secrets.Box {
+	t.Helper()
+	box, err := secrets.NewBox(secrets.RandomKey())
+	if err != nil {
+		t.Fatalf("secrets.NewBox: %v", err)
+	}
+	return box
+}
 
 const testOrgID = "org_test"
 const testHandoffSecret = "integration-test-handoff-secret"
@@ -39,7 +49,7 @@ func newTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 	// for real here, not just asserted in prose.
 	mp := mailer.Profile{Name: "broken-sink", Host: "127.0.0.1:1", From: "it@sim.local", NoAuth: true}
 
-	srv := New(st, mp, "http://sim.invalid", "", testOrgID) // "" = standalone mode, no token required
+	srv := New(st, mp, testSecretsBox(t), "http://sim.invalid", "", testOrgID, "") // "" = standalone mode, no token required
 	ts := httptest.NewServer(srv.Routes())
 	t.Cleanup(ts.Close)
 	return ts, st
@@ -58,7 +68,7 @@ func newIntegratedTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 		}
 	}
 	mp := mailer.Profile{Name: "broken-sink", Host: "127.0.0.1:1", From: "it@sim.local", NoAuth: true}
-	srv := New(st, mp, "http://sim.invalid", testHandoffSecret, "")
+	srv := New(st, mp, testSecretsBox(t), "http://sim.invalid", testHandoffSecret, "", "")
 	ts := httptest.NewServer(srv.Routes())
 	t.Cleanup(ts.Close)
 	return ts, st
