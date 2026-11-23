@@ -1,6 +1,4 @@
-// Package mailer sends through an approved mailer profile. Stdlib net/smtp
-// is enough for a local sink; a real relay with TLS/auth may eventually
-// want a proper mail library instead.
+// Package mailer sends through an approved mailer profile via stdlib net/smtp.
 package mailer
 
 import (
@@ -8,9 +6,7 @@ import (
 	"net/smtp"
 )
 
-// Profile is an "approved SMTP profile" - one named mail route an operator
-// can pick in the Test/Release steps. Nothing here validates or trusts
-// content; it only moves bytes the caller already rendered.
+// Profile is one named SMTP route an operator can pick for Test/Release.
 type Profile struct {
 	Name     string
 	Host     string // host:port
@@ -20,10 +16,7 @@ type Profile struct {
 	Password string
 }
 
-// Send returns a plain error on any SMTP-level rejection: callers record this
-// as "send failed", distinct from "accepted" (no error) and distinct again
-// from "verified delivered", which this package has no way to observe -
-// that needs real mailbox evidence from the recipient side.
+// Send reports only "accepted by SMTP" or an error - never delivery confirmation.
 func Send(p Profile, to, subject, htmlBody string) error {
 	msg := buildMessage(p.From, to, subject, htmlBody)
 

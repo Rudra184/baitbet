@@ -1,0 +1,11 @@
+{{define "form"}}<form method="post" action="{{.SubmitAction}}" autocomplete="off">
+      {{if .CaptureUsername}}
+      <label for="username">Username or email</label>
+      <input id="username" name="username" type="text" autocomplete="off">
+      {{end}}
+      {{if .CapturePassword}}
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="off">
+      {{end}}
+      <button type="submit">Sign in</button>
+    </form>{{end}}

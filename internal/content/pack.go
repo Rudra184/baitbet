@@ -1,19 +1,12 @@
-// Package content defines the versioned content pack the renderer consumes.
-// A pack holds only typed text fields and references to local, embedded
-// assets - never forms, remote URLs or executable content - so the same
-// pack can be validated once and then rendered identically in preview and
-// in delivery (see render.Render* and the "Author once" step in the
-// standalone-service plan).
+// Package content defines the versioned content pack the renderer
+// consumes: only typed text and local embedded asset keys, never forms,
+// remote URLs or executable content.
 package content
 
-// Pack is one versioned, tenant-scoped training scenario: the email a
-// recipient receives and the debrief page the tracking link resolves to.
+// Pack is one versioned, tenant-scoped training scenario.
 type Pack struct {
-	// Version identifies this exact content revision. Approval and release
-	// in the operator workflow are tied to one Version, never to "latest".
-	Version string
-
-	Scenario string // e.g. "network_reauth" - matches the platform's existing scenario_type
+	Version  string // approval/release are tied to one Version, never "latest"
+	Scenario string
 
 	Email   EmailContent
 	Debrief DebriefContent
@@ -22,7 +15,7 @@ type Pack struct {
 type EmailContent struct {
 	FromName    string
 	Subject     string
-	BodyHTML    string // short rich-text body; rendered as escaped data, never raw HTML
+	BodyHTML    string
 	ButtonLabel string
 }
 
@@ -34,9 +27,7 @@ type DebriefContent struct {
 	LogoAssetKey string // key into the embedded local asset set; never a URL
 }
 
-// Validate rejects a pack that isn't safe to render: every field here ends
-// up as escaped template data, but a pack with no content or an asset key
-// that isn't local would silently produce a broken or misleading page.
+// Validate rejects a pack missing fields that would render as broken/misleading.
 func (p Pack) Validate() error {
 	switch {
 	case p.Version == "":
@@ -56,3 +47,9 @@ type validationError string
 func (e validationError) Error() string { return "content: missing required field " + string(e) }
 
 func errRequired(field string) error { return validationError(field) }
+
+// IsValidationError reports whether err came from Pack.Validate (400, not 500).
+func IsValidationError(err error) bool {
+	_, ok := err.(validationError)
+	return ok
+}

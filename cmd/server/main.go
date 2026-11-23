@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/rudra184/baitbet/internal/mailer"
+	"github.com/rudra184/baitbet/internal/secrets"
 	"github.com/rudra184/baitbet/internal/server"
 	"github.com/rudra184/baitbet/internal/store"
 )
@@ -40,6 +41,9 @@ func main() {
 	if err := st.UpsertOrganization(ctx, orgID, env("SIM_ORG_NAME", "Local demo org"), true); err != nil {
 		log.Fatalf("seed org: %v", err)
 	}
+	if err := st.SeedBuiltinLibrary(ctx); err != nil {
+		log.Fatalf("seed library: %v", err)
+	}
 
 	mp := mailer.Profile{
 		Name:   env("SIM_MAILER_NAME", "local-sink"),
@@ -51,13 +55,25 @@ func main() {
 	publicBase := env("SIM_PUBLIC_BASE", "http://127.0.0.1:8766")
 	addr := env("SIM_LISTEN_ADDR", "127.0.0.1:8766")
 
-	// Empty SIM_HANDOFF_SECRET = standalone mode: every request is treated
-	// as orgID, no token required. Set it to require every admin request to
-	// carry a valid signed handoff token minted by whatever host application
-	// is embedding this service (see internal/authn and ARCHITECTURE.md).
+	// Empty = standalone mode (no handoff token required, see internal/authn).
 	handoffSecret := os.Getenv("SIM_HANDOFF_SECRET")
 
-	srv := server.New(st, mp, publicBase, handoffSecret, orgID)
+	// Unset in dev: a random per-process key is generated, so a stored
+	// password won't decrypt across a restart - fine for dev, never for a real deployment.
+	secretKey := os.Getenv("SIM_SECRET_KEY")
+	if secretKey == "" {
+		secretKey = secrets.RandomKey()
+		log.Printf("SIM_SECRET_KEY not set; generated an ephemeral key (mailer profile passwords won't survive a restart)")
+	}
+	secBox, err := secrets.NewBox(secretKey)
+	if err != nil {
+		log.Fatalf("secrets: %v", err)
+	}
+
+	// Empty disables "Clone a webpage" with a clear error instead of crashing.
+	browserWSURL := os.Getenv("SIM_BROWSER_WS_URL")
+
+	srv := server.New(st, mp, secBox, publicBase, handoffSecret, orgID, browserWSURL)
 
 	mode := "standalone (no handoff token required)"
 	if handoffSecret != "" {

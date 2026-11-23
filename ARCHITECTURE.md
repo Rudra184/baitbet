@@ -126,9 +126,54 @@ are impossible at the database level, not just by convention.
 Email and debrief pages are rendered with the standard library's
 `html/template` — auto-escaped by default, no third-party template engine.
 The one asset reference (a logo) is embedded via `go:embed` and served as a
-`data:` URI, so there's never a remote image to fetch. There's no headless
-browser anywhere in this service; it doesn't clone real login pages, it
-renders original, form-free templates.
+`data:` URI, so there's never a remote image to fetch.
+
+Two deliberate, narrowly scoped exceptions to that form-free, self-contained
+design exist, both load-bearing and covered by tests:
+
+- **A real credential-capture form.** A campaign's landing page can render
+  an actual `<form>` (`internal/render.Landing`/`LandingFromClone`) posting
+  to this service's own `/t/{token}/submit` route. The password value is
+  never read back into Go by the renderer or persisted by the handler on
+  the other end — only whether a password field was used is recorded (see
+  `internal/store.RecordSubmission`).
+- **A headless-browser clone pipeline** (`internal/browserclone`, using
+  `chromedp` against a separate headless-Chrome container), used by "Clone
+  a webpage" so a landing page can actually look like its real target — JS
+  executed, CSS applied — instead of a static-fetched skeleton. The
+  rendered page is sanitized before it's ever stored
+  (`internal/clone.SanitizeWithFormMarker` strips scripts/iframes/objects/
+  event handlers and the real `<form>`, leaving a marker `internal/render`
+  replaces with the service's own safe form at serve time;
+  `internal/clone.InlineStylesheetsWithRuntimeCSS` inlines every linked
+  stylesheet). Stylesheet CSS is read straight out of the live page's own
+  CSSOM (`document.styleSheets`, captured by `browserclone.collectRuntimeCSS`
+  just before the tab closes) rather than re-fetched independently, and
+  falls back to fetching the `<link>`'s `href` (or `data-href`) only when
+  that capture is missing or incomplete for a given stylesheet. This isn't
+  just an optimization: some sites (github.com/login among them) load a
+  stylesheet via `<link href="...">`, let the browser apply it, then
+  strip or move that `href` attribute afterward — by the time this page's
+  rendered DOM is captured, a second, independent fetch would have no URL
+  left to fetch for that stylesheet at all, and would in any case be more
+  likely to be rate-limited by the origin than the single fetch the real
+  browser already made. One documented gap remains: background-image/font
+  `url(...)` references inside that CSS still load live from the original
+  host at serve time, rather than being rehosted — acceptable for now, not
+  silent.
+
+  This reintroduces the kind of infrastructure this service otherwise
+  avoids, so two things keep it safe: every URL is validated by
+  `internal/netguard` (http/s only, every resolved IP must be public —
+  blocks localhost/RFC1918/link-local/cloud-metadata/CGNAT) before
+  navigation and again on the page's final URL after it; and, since a
+  rendering page can run arbitrary JS that issues its own sub-requests no
+  app-layer check can fully police, the headless-Chrome container
+  (`baitbet-browser` in docker-compose.yml) sits on its own network with no
+  route to this service's database, cache, or any other internal
+  container — the actual backstop is that an internal address has nowhere
+  to be reached from inside that container, regardless of what the page
+  running inside it tries.
 
 ## Testing
 

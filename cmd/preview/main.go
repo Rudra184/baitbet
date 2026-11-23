@@ -1,7 +1,5 @@
-// Command preview serves the offline renderer's output on localhost so an
-// operator can look at the email and debrief in a real browser. It starts
-// no browser itself and makes no outbound network call - it only renders
-// an embedded fixture pack and serves the static HTML.
+// Command preview renders an embedded fixture pack and serves the static
+// HTML on localhost - no outbound network call.
 package main
 
 import (

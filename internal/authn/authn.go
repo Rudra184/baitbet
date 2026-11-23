@@ -1,9 +1,5 @@
-// Package authn verifies the short-lived signed handoff token a host
-// application mints after its own session auth and entitlement checks
-// have already passed (see ARCHITECTURE.md). It does not replace those
-// checks and does not implement a login flow of its own - it only answers
-// "did the host actually vouch for this request, for this org, and is
-// that vouch still fresh."
+// Package authn verifies the short-lived signed handoff token a host app
+// mints after its own auth has already passed (see ARCHITECTURE.md).
 package authn
 
 import (
@@ -16,11 +12,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Audience is the fixed `aud` claim a handoff token must carry. This is
-// what stops the platform's own longer-lived session JWT (or any other
-// HS256 token signed with the same secret) from being replayed here: it
-// was never minted for this audience, so it's rejected even though the
-// signature would otherwise verify.
+// Audience is the fixed `aud` claim a handoff token must carry, so a
+// token signed for something else (e.g. the host's own session JWT)
+// can't be replayed here even with a valid signature.
 const Audience = "baitbet"
 
 // Claims is the minimal set this service actually uses. The platform may
@@ -36,10 +30,8 @@ var (
 	ErrNoOrgID      = errors.New("authn: token has no org_id claim")
 )
 
-// Verify checks signature, expiry, and audience, and returns the claims.
-// It only accepts HS256 - golang-jwt's WithValidMethods closes the classic
-// "alg: none" / algorithm-confusion attack by refusing to even attempt
-// verification with any other algorithm the token header might claim.
+// Verify checks signature, expiry and audience; HS256 only, to close the
+// "alg: none" / algorithm-confusion attack.
 func Verify(tokenString, secret string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
@@ -57,8 +49,7 @@ func Verify(tokenString, secret string) (*Claims, error) {
 	return claims, nil
 }
 
-// FromHeader extracts and verifies the bearer token from an incoming
-// request's Authorization header.
+// FromHeader verifies the bearer token in an incoming request.
 func FromHeader(r *http.Request, secret string) (*Claims, error) {
 	h := r.Header.Get("Authorization")
 	if h == "" {
@@ -71,9 +62,7 @@ func FromHeader(r *http.Request, secret string) (*Claims, error) {
 	return Verify(strings.TrimPrefix(h, prefix), secret)
 }
 
-// Mint is used only by local tooling/tests standing in for a host
-// application, which is the real token issuer in production. It is not
-// called anywhere in the service's own request path.
+// Mint is for local tooling/tests only; a host app mints tokens in production.
 func Mint(secret, orgID, userID, role string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := Claims{
