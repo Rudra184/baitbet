@@ -89,21 +89,21 @@ func TestDebrief_EscapesAuthoredText(t *testing.T) {
 	}
 }
 
-func TestEmail_EscapesAuthoredText(t *testing.T) {
+// Subject stays plain text/escaped - only BodyHTML is operator-trusted markup.
+func TestEmail_EscapesSubjectButTrustsBodyHTML(t *testing.T) {
 	pack := fixture()
 	pack.Email.Subject = `<img src=x onerror=alert(1)>`
-	pack.Email.BodyHTML = `<script>steal()</script>`
+	pack.Email.BodyHTML = `<strong>Formatted</strong> body with a <a href="https://example.com">link</a>`
 
 	out, err := Email(pack)
 	if err != nil {
 		t.Fatalf("Email: %v", err)
 	}
-	assertNoFormsScriptsOrRemoteAssets(t, out)
 	if !strings.Contains(out, "&lt;img src=x onerror=alert(1)&gt;") {
-		t.Fatal("expected the injected <img> tag to come out escaped, not dropped silently")
+		t.Fatal("expected the injected Subject <img> tag to come out escaped, not dropped silently")
 	}
-	if !strings.Contains(out, "&lt;script&gt;steal()&lt;/script&gt;") {
-		t.Fatal("expected the injected <script> tag to come out escaped, not dropped silently")
+	if !strings.Contains(out, `<strong>Formatted</strong> body with a <a href="https://example.com">link</a>`) {
+		t.Fatal("expected BodyHTML to render as real markup, operators now author HTML templates directly")
 	}
 }
 
@@ -125,6 +125,9 @@ func TestDebrief_NoFormsScriptsOrRemoteAssets(t *testing.T) {
 	assertNoFormsScriptsOrRemoteAssets(t, out)
 }
 
+// BodyHTML is operator-trusted markup (see Email's doc comment), so this
+// only pins the plain-text fixture's baseline output - it is not a
+// guarantee that holds for arbitrary BodyHTML content anymore.
 func TestEmail_NoFormsScriptsOrRemoteAssets(t *testing.T) {
 	out, err := Email(fixture())
 	if err != nil {
@@ -181,18 +184,17 @@ func TestEmailDelivery_ContainsExactTrackingLink(t *testing.T) {
 	}
 }
 
-func TestEmailDelivery_EscapesAuthoredText(t *testing.T) {
+// BodyHTML is operator-trusted (campaign template content, not recipient
+// input) - EmailDelivery renders it as real markup, same as Email.
+func TestEmailDelivery_RendersBodyHTMLAsMarkup(t *testing.T) {
 	pack := fixture()
-	pack.Email.BodyHTML = `<script>steal()</script>`
+	pack.Email.BodyHTML = `<strong>Formatted</strong> body`
 	out, err := EmailDelivery(pack, "http://127.0.0.1:8765/t/abc123token")
 	if err != nil {
 		t.Fatalf("EmailDelivery: %v", err)
 	}
-	if strings.Contains(out, "<script>steal()</script>") {
-		t.Fatal("raw <script> tag survived into rendered output")
-	}
-	if !strings.Contains(out, "&lt;script&gt;steal()&lt;/script&gt;") {
-		t.Fatal("expected the injected <script> tag to come out escaped")
+	if !strings.Contains(out, "<strong>Formatted</strong> body") {
+		t.Fatal("expected BodyHTML to render as real markup")
 	}
 }
 

@@ -43,14 +43,18 @@ type debriefView struct {
 }
 
 type emailView struct {
-	Subject     string
-	BodyHTML    string
+	Subject string
+	// template.HTML, not string: an operator writing a custom email template
+	// is deliberately trusted to author real markup (links, formatting,
+	// a look-alike layout) - see Email's doc comment. Subject and every
+	// other pack field stay plain strings (auto-escaped).
+	BodyHTML    template.HTML
 	ButtonLabel string
 }
 
 type emailDeliveryView struct {
 	Subject     string
-	BodyHTML    string
+	BodyHTML    template.HTML
 	ButtonLabel string
 	// Both server-built, never pack-authored - same template.URL reason as LogoDataURI.
 	ButtonHref   template.URL
@@ -82,14 +86,19 @@ func Debrief(pack content.Pack) (string, error) {
 	return buf.String(), nil
 }
 
-// Email renders the recipient-facing email body.
+// Email renders the recipient-facing email body. BodyHTML is rendered
+// as trusted markup (template.HTML) - an operator building a campaign
+// template is expected to author real HTML (formatting, links, a
+// convincing layout), not plain text - so callers must never pass
+// through end-user/recipient input here, only operator-authored
+// template content from the admin workspace.
 func Email(pack content.Pack) (string, error) {
 	if err := pack.Validate(); err != nil {
 		return "", err
 	}
 	view := emailView{
 		Subject:     pack.Email.Subject,
-		BodyHTML:    pack.Email.BodyHTML,
+		BodyHTML:    template.HTML(pack.Email.BodyHTML),
 		ButtonLabel: pack.Email.ButtonLabel,
 	}
 	var buf bytes.Buffer
@@ -107,7 +116,7 @@ func EmailDelivery(pack content.Pack, trackingURL string) (string, error) {
 	}
 	view := emailDeliveryView{
 		Subject:      pack.Email.Subject,
-		BodyHTML:     pack.Email.BodyHTML,
+		BodyHTML:     template.HTML(pack.Email.BodyHTML),
 		ButtonLabel:  pack.Email.ButtonLabel,
 		ButtonHref:   template.URL(trackingURL),
 		OpenPixelSrc: template.URL(trackingURL + "/open.gif"),
