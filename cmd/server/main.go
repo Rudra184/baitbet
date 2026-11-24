@@ -46,10 +46,12 @@ func main() {
 	}
 
 	mp := mailer.Profile{
-		Name:   env("SIM_MAILER_NAME", "local-sink"),
-		Host:   env("SIM_SMTP_HOST", "127.0.0.1:1025"),
-		From:   env("SIM_MAIL_FROM", "it-helpdesk@sim.local"),
-		NoAuth: parseBool(env("SIM_SMTP_NO_AUTH", "true")),
+		Name:     env("SIM_MAILER_NAME", "local-sink"),
+		Host:     env("SIM_SMTP_HOST", "127.0.0.1:1025"),
+		From:     env("SIM_MAIL_FROM", "it-helpdesk@sim.local"),
+		NoAuth:   parseBool(env("SIM_SMTP_NO_AUTH", "true")),
+		Username: os.Getenv("SIM_SMTP_USERNAME"),
+		Password: os.Getenv("SIM_SMTP_PASSWORD"),
 	}
 
 	publicBase := env("SIM_PUBLIC_BASE", "http://127.0.0.1:8766")
