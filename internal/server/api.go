@@ -64,8 +64,16 @@ func (s *Server) apiFail(w http.ResponseWriter, err error) bool {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return true
 	}
-	if store.IsForeignKeyViolation(err) {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "still in use by one or more campaigns"})
+	if constraint := store.ForeignKeyConstraintName(err); constraint != "" {
+		msg := "a related record is missing or still referenced"
+		switch constraint {
+		case "campaigns_landing_page_id_fkey", "campaigns_template_id_fkey":
+			msg = "still in use by one or more campaigns"
+		case "landing_pages_organization_id_fkey", "templates_organization_id_fkey",
+			"mailer_profiles_organization_id_fkey", "campaigns_organization_id_fkey":
+			msg = "organization not yet synced with this service - retry in a moment"
+		}
+		writeJSON(w, http.StatusConflict, map[string]string{"error": msg})
 		return true
 	}
 	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})

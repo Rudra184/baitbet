@@ -27,6 +27,18 @@ func IsForeignKeyViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23503"
 }
 
+// ForeignKeyConstraintName returns the violated constraint's name, or ""
+// if err isn't a foreign-key violation - several different constraints can
+// raise 23503, so callers choosing an error message must not assume which
+// one fired (see server/api.go's apiFail).
+func ForeignKeyConstraintName(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return pgErr.ConstraintName
+	}
+	return ""
+}
+
 func Open(ctx context.Context, dsn string) (*Store, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
